@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 const SYSTEM_PROMPT = `You are LUMEN AI — a friendly, knowledgeable assistant for the LUMEN Event Booking Platform.
 
 Your capabilities:
@@ -28,35 +26,4 @@ export async function POST(req: Request) {
     const { messages } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-    }
-
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({
-        reply:
-          "The AI assistant isn't configured yet. Please add your OPENAI_API_KEY to .env.local. In the meantime, you can explore events on the Explore Events page!",
-      });
-    }
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        ...messages.slice(-10).map((m: any) => ({
-          role: m.role,
-          content: m.content,
-        })),
-      ],
-      max_tokens: 300,
-      temperature: 0.7,
-    });
-
-    const reply = completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
-    return NextResponse.json({ reply });
-  } catch (err: any) {
-    console.error('[CHATBOT_ERROR]', err?.message);
-    return NextResponse.json({
-      reply: "I'm having a moment — please try again shortly! 🙏",
-    });
-  }
-}
+      return NextResponse.json({ error:

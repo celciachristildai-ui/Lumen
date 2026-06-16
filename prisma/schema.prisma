@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = "postgresql://neondb_owner:npg_wVYZgqc5oP2W@ep-mute-sound-aoq7e6bt.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -26,6 +26,10 @@ model User {
   password      String
   role          Role      @default(USER)
   image         String?
+  phone         String?
+  bio           String?
+  city          String?
+  language      String    @default("en")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

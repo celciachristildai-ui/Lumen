@@ -19,11 +19,46 @@ About the platform:
 - Users can view all their bookings in the Dashboard
 
 Tone: Warm, concise, enthusiastic. Use emojis sparingly. Keep answers short (2-4 sentences) unless the user asks for detail.
-If asked something you don't know, say so honestly and suggest they contact support.`;
+If asked something you do not know, say so honestly and suggest they contact support.`;
 
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json({ error:
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json({
+        reply: 'The AI assistant is not configured yet. Please add your OPENAI_API_KEY to Vercel environment variables.',
+      });
+    }
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...messages.slice(-10).map((m: any) => ({
+          role: m.role,
+          content: m.content,
+        })),
+      ],
+      max_tokens: 300,
+      temperature: 0.7,
+    });
+
+    const reply =
+      completion.choices[0]?.message?.content ||
+      'Sorry, I could not generate a response.';
+
+    return NextResponse.json({ reply });
+  } catch (err: any) {
+    console.error('[CHATBOT_ERROR]', err?.message);
+    return NextResponse.json({
+      reply: 'I am having a moment — please try again shortly!',
+    });
+  }
+}

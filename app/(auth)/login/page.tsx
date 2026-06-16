@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Sparkles, Loader2, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -21,12 +23,13 @@ export default function LoginPage() {
       redirect: false,
     });
     setLoading(false);
-
     if (res?.error) {
       toast.error(res.error);
     } else {
       toast.success('Welcome back!');
-      router.push('/');
+      // Redirect to callbackUrl but never back to /login to prevent loops
+      const destination = callbackUrl.includes('/login') ? '/' : callbackUrl;
+      router.push(destination);
       router.refresh();
     }
   }
@@ -67,11 +70,7 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 className="w-full bg-dark-700 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 pr-10"
               />
-              <button
-                type="button"
-                onClick={() => setShowPw((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-              >
+              <button type="button" onClick={() => setShowPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                 {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
@@ -87,17 +86,22 @@ export default function LoginPage() {
 
           <p className="text-center text-sm text-gray-400">
             Don&apos;t have an account?{' '}
-            <Link href="/register" className="text-primary-300 hover:text-primary-200 font-medium">
-              Sign up
-            </Link>
+            <Link href="/register" className="text-primary-300 hover:text-primary-200 font-medium">Sign up</Link>
           </p>
 
           <div className="border-t border-white/5 pt-4 text-xs text-gray-500 text-center">
-            Demo: <span className="text-gray-400">user@lumen.com</span> /{' '}
-            <span className="text-gray-400">password123</span>
+            Demo: <span className="text-gray-400">user@lumen.com</span> / <span className="text-gray-400">password123</span>
           </div>
         </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary-400" size={32} /></div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

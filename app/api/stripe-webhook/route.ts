@@ -3,7 +3,7 @@ import { stripe } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
 import Stripe from 'stripe';
 
-export const config = { api: { bodyParser: false } };
+
 
 export async function POST(req: Request) {
   const body = await req.text();

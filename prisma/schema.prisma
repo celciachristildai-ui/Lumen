@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://neondb_owner:npg_wVYZgqc5oP2W@ep-mute-sound-aoq7e6bt.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+}
+
+enum Role {
+  USER
+  ORGANIZER
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  password      String
+  role          Role      @default(USER)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  events        Event[]   @relation("OrganizerEvents")
+  bookings      Booking[]
+  chatMessages  ChatMessage[]
+}
+
+model Event {
+  id            String    @id @default(cuid())
+  title         String
+  description   String
+  category      String
+  location      String
+  venue         String
+  date          DateTime
+  time          String
+  price         Float
+  capacity      Int
+  bookedSeats   Int       @default(0)
+  imageUrl      String
+  featured      Boolean   @default(false)
+  status        String    @default("UPCOMING")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  organizerId   String
+  organizer     User      @relation("OrganizerEvents", fields: [organizerId], references: [id])
+  bookings      Booking[]
+
+  @@index([category])
+  @@index([date])
+}
+
+model Booking {
+  id              String        @id @default(cuid())
+  quantity        Int
+  totalAmount     Float
+  status          BookingStatus @default(PENDING)
+  stripeSessionId String?       @unique
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+
+  eventId         String
+  event           Event         @relation(fields: [eventId], references: [id])
+
+  @@index([userId])
+  @@index([eventId])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}

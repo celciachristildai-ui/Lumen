@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
 
 const SYSTEM_PROMPT = `You are LUMEN AI — a friendly, knowledgeable assistant for the LUMEN Event Booking Platform.
 
@@ -18,7 +17,7 @@ About the platform:
 - Free events are instantly confirmed; paid events go through Stripe Checkout
 - Users can view all their bookings in the Dashboard
 
-Tone: Warm, concise, enthusiastic. Use emojis sparingly. Keep answers short (2-4 sentences) unless the user asks for detail.
+Tone: Warm, concise, enthusiastic. Use emojis sparingly. Keep answers short (2-4 sentences).
 If asked something you do not know, say so honestly and suggest they contact support.`;
 
 export async function POST(req: Request) {
@@ -29,36 +28,51 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({
-        reply: 'The AI assistant is not configured yet. Please add your OPENAI_API_KEY to Vercel environment variables.',
+        reply: 'The AI assistant is not configured yet. Please add GEMINI_API_KEY to your environment variables.',
       });
     }
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const contents = messages.slice(-10).map((m: any) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        ...messages.slice(-10).map((m: any) => ({
-          role: m.role,
-          content: m.content,
-        })),
-      ],
-      max_tokens: 300,
-      temperature: 0.7,
-    });
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: SYSTEM_PROMPT }],
+          },
+          contents,
+          generationConfig: {
+            maxOutputTokens: 300,
+            temperature: 0.7,
+          },
+        }),
+      }
+    );
 
+    if (!res.ok) {
+      const err = await res.json();
+      console.error('[GEMINI_ERROR]', err);
+      throw new Error('Gemini API error');
+    }
+
+    const data = await res.json();
     const reply =
-      completion.choices[0]?.message?.content ||
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
       'Sorry, I could not generate a response.';
 
     return NextResponse.json({ reply });
   } catch (err: any) {
     console.error('[CHATBOT_ERROR]', err?.message);
     return NextResponse.json({
-      reply: 'I am having a moment — please try again shortly!',
+      reply: "I'm having a moment — please try again shortly!",
     });
   }
 }

@@ -4,9 +4,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 
 export const authOptions: NextAuthOptions = {
-  session: {
-    strategy: 'jwt',
-  },
+  session: { strategy: 'jwt' },
   pages: {
     signIn: '/login',
     error: '/login',
@@ -33,7 +31,7 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           email: user.email,
           role: user.role,
-          image: user.image,
+          image: user.image ?? null,
           language: user.language,
         };
       },
@@ -42,13 +40,13 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user) {
-        token.id = user.id;
+        token.id = (user as any).id;
         token.role = (user as any).role;
         token.language = (user as any).language;
       }
       if (trigger === 'update' && session) {
-        token.name = session.name;
-        token.language = session.language;
+        if (session.name) token.name = session.name;
+        if (session.language) token.language = session.language;
       }
       return token;
     },
@@ -59,6 +57,12 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).language = token.language;
       }
       return session;
+    },
+    async redirect({ url, baseUrl }) {
+      if (url.includes('/login') || url.includes('/register')) return baseUrl;
+      if (url.startsWith('/')) return `${baseUrl}${url}`;
+      if (url.startsWith(baseUrl)) return url;
+      return baseUrl;
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
